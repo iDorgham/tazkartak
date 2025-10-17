@@ -1,0 +1,139 @@
+version: '3.8'
+
+networks:
+  tazkartak-network:
+    driver: bridge
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: tazkartak-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tazkartak
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - tazkartak-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tazkartak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: tazkartak-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - tazkartak-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: tazkartak-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Application Configuration
+      NODE_ENV: development
+      PORT: 3000
+      CORS_ORIGIN: http://localhost:3001
+      
+      # Database Configuration
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tazkartak
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      
+      # Redis Configuration
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # JWT Configuration
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      JWT_REFRESH_SECRET: your-super-secret-refresh-key-change-this-in-production
+      JWT_EXPIRES_IN: 1h
+      JWT_REFRESH_EXPIRES_IN: 7d
+      
+      # Rate Limiting
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX_REQUESTS: 100
+      
+      # Socket.IO Configuration
+      SOCKET_CORS_ORIGIN: http://localhost:3001
+      
+      # Security Configuration
+      BCRYPT_ROUNDS: 12
+      PASSWORD_MIN_LENGTH: 8
+      
+      # API Documentation
+      API_DOCS_ENABLED: true
+      
+      # Monitoring Configuration
+      HEALTH_CHECK_ENABLED: true
+      HEALTH_CHECK_INTERVAL: 30000
+      
+      # Development Configuration
+      HOT_RELOAD: true
+      DEBUG_MODE: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - tazkartak-network
+    volumes:
+      # Mount source code for hot reloading in development
+      - ./apps/backend/src:/app/src:ro
+      - ./apps/backend/prisma:/app/prisma:ro
+      - ./packages:/app/packages:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

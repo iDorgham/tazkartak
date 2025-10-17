@@ -1,0 +1,49 @@
+{
+  "name": "Tazkartak",
+  "displayName": "Tazkartak",
+  "version": "1.0.0",
+  "buildNumber": "1",
+  "description": "Event ticket selling platform for Egypt",
+  "orientation": "portrait",
+  "icon": "./src/assets/images/icon.png",
+  "splash": {
+    "image": "./src/assets/images/splash.png",
+    "resizeMode": "contain",
+    "backgroundColor": "#ffffff"
+  },
+  "ios": {
+    "bundleIdentifier": "com.tazkartak.mobile",
+    "buildNumber": "1",
+    "infoPlist": {
+      "NSCameraUsageDescription": "This app needs access to camera to scan QR codes for ticket validation",
+      "NSPhotoLibraryUsageDescription": "This app needs access to photo library to save QR codes",
+      "NSLocationWhenInUseUsageDescription": "This app needs location access to show nearby events",
+      "NSFaceIDUsageDescription": "This app uses Face ID for secure authentication",
+      "NSMicrophoneUsageDescription": "This app needs microphone access for video features"
+    },
+    "associatedDomains": ["applinks:tazkartak.com", "applinks:www.tazkartak.com"]
+  },
+  "android": {
+    "package": "com.tazkartak.mobile",
+    "versionCode": 1,
+    "permissions": [
+      "android.permission.CAMERA",
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.ACCESS_FINE_LOCATION",
+      "android.permission.ACCESS_COARSE_LOCATION",
+      "android.permission.RECORD_AUDIO",
+      "android.permission.VIBRATE",
+      "android.permission.USE_FINGERPRINT",
+      "android.permission.USE_BIOMETRIC"
+    ]
+  },
+  "updates": {
+    "enabled": true,
+    "checkAutomatically": "ON_LOAD",
+    "fallbackToCacheTimeout": 0
+  },
+  "assetBundlePatterns": [
+    "**/*"
+  ]
+}

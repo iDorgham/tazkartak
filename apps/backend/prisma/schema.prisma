@@ -1,0 +1,554 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  ORGANIZER
+  VENUE_OWNER
+  BUYER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum EventCategory {
+  MUSIC
+  SPORTS
+  CONFERENCE
+  EXHIBITION
+  WORKSHOP
+  FESTIVAL
+  WEDDING
+  CORPORATE
+  EDUCATION
+  OTHER
+}
+
+enum TicketStatus {
+  AVAILABLE
+  SOLD
+  USED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  PAYMOB
+  FAWRY
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum SubscriptionPlan {
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  CANCELLED
+  EXPIRED
+  PENDING
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  firstName     String
+  lastName      String
+  phone         String?
+  role          UserRole  @default(BUYER)
+  status        UserStatus @default(PENDING)
+  emailVerified Boolean   @default(false)
+  emailVerifyToken String?
+  passwordResetToken String?
+  passwordResetExpires DateTime?
+  lastLogin     DateTime?
+  profileImage  String?
+  bio           String?
+  company       String?
+  website       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  organizedEvents Event[] @relation("EventOrganizer")
+  ownedVenues     Venue[] @relation("VenueOwner")
+  purchasedTickets Ticket[] @relation("TicketBuyer")
+  payments        Payment[]
+  subscriptions   Subscription[]
+  apiKeys         ApiKey[]
+  webhooks        Webhook[]
+  notifications   Notification[]
+  activityLogs    ActivityLog[]
+  widgetConfig    WidgetConfig?
+  organizer       Organizer?
+  venueOwner      VenueOwner?
+  oauthClients    OAuthClient[]
+  authCodes       AuthorizationCode[]
+  accessTokens    AccessToken[]
+
+  @@map("users")
+}
+
+model Venue {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  address     String
+  city        String
+  country     String  @default("Egypt")
+  latitude    Float?
+  longitude   Float?
+  capacity    Int
+  amenities   String[] // Array of amenities like ["parking", "wifi", "accessibility"]
+  images      String[] // Array of image URLs
+  contactPerson String
+  contactPhone  String
+  contactEmail  String
+  website     String?
+  isVerified  Boolean @default(false)
+  verificationNotes String?
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  owner       VenueOwner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  events      Event[]
+
+  @@map("venues")
+}
+
+model Event {
+  id          String        @id @default(cuid())
+  name        String
+  description String
+  category    EventCategory
+  startDate   DateTime
+  endDate     DateTime
+  capacity    Int
+  price       Float
+  currency    String        @default("EGP")
+  status      EventStatus   @default(DRAFT)
+  imageUrl    String?
+  isPublic    Boolean       @default(true)
+  organizerId String
+  venueId     String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  organizer   Organizer @relation("EventOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  venue       Venue @relation(fields: [venueId], references: [id])
+  tickets     Ticket[]
+  ticketTypes TicketType[]
+  analytics   EventAnalytics[]
+
+  @@map("events")
+}
+
+model Ticket {
+  id           String       @id @default(cuid())
+  eventId      String
+  buyerId      String?
+  qrCode       String       @unique
+  price        Float
+  currency     String       @default("EGP")
+  status       TicketStatus @default(AVAILABLE)
+  purchaseDate DateTime?
+  usedDate     DateTime?
+  transferTo   String? // Email of the person to transfer to
+  transferDate DateTime?
+  refundReason String?
+  refundDate   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  event        Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  buyer        User? @relation("TicketBuyer", fields: [buyerId], references: [id])
+  payment      Payment?
+  qrScans      QRScan[]
+
+  @@map("tickets")
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  ticketId        String        @unique
+  buyerId         String
+  amount          Float
+  currency        String        @default("EGP")
+  method          String        // Payment method as string
+  status          PaymentStatus @default(PENDING)
+  transactionId   String?       // PayMob transaction ID
+  referenceNumber String?       // Fawry reference number
+  paymentUrl      String?       // PayMob payment URL
+  gatewayResponse Json?         // Full gateway response
+  refundAmount    Float?        @default(0)
+  refundReason    String?
+  refundDate      DateTime?
+  processedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  ticket          Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  buyer           User @relation(fields: [buyerId], references: [id])
+
+  @@map("payments")
+}
+
+model Subscription {
+  id              String             @id @default(cuid())
+  userId          String
+  plan            SubscriptionPlan
+  status          SubscriptionStatus @default(PENDING)
+  startDate       DateTime
+  endDate         DateTime
+  price           Float
+  currency        String             @default("EGP")
+  paymentMethod   PaymentMethod?
+  transactionId   String?
+  autoRenew       Boolean            @default(true)
+  cancelledAt     DateTime?
+  cancellationReason String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Relations
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usageStats      SubscriptionUsage[]
+
+  @@map("subscriptions")
+}
+
+model SubscriptionUsage {
+  id             String   @id @default(cuid())
+  subscriptionId String
+  month          Int      // 1-12
+  year           Int
+  eventsCreated  Int      @default(0)
+  ticketsSold    Int      @default(0)
+  revenue        Float    @default(0)
+  apiCalls       Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, month, year])
+  @@map("subscription_usage")
+}
+
+model QRScan {
+  id        String    @id @default(cuid())
+  ticketId  String
+  qrCode    String    // The actual QR code string
+  isScanned Boolean   @default(false)
+  scannedAt DateTime?
+  scannedBy String?   // User ID who scanned the QR
+  location  String?   // JSON string of location data
+  deviceInfo String?  // JSON string of device information
+  isValid   Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  ticket    Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("qr_scans")
+}
+
+model EventAnalytics {
+  id              String   @id @default(cuid())
+  eventId         String
+  date            DateTime @default(now())
+  views           Int      @default(0)
+  uniqueViews     Int      @default(0)
+  ticketsSold     Int      @default(0)
+  revenue         Float    @default(0)
+  refunds         Int      @default(0)
+  refundAmount    Float    @default(0)
+  qrScans         Int      @default(0)
+  uniqueScans     Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  event           Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, date])
+  @@map("event_analytics")
+}
+
+model ApiKey {
+  id             String    @id @default(cuid())
+  organizerId    String
+  key            String    @unique
+  name           String
+  permissions    String[]
+  rateLimit      Int       @default(1000)
+  allowedDomains String[]
+  expiresAt      DateTime?
+  lastUsedAt     DateTime?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  user           User @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model WidgetConfig {
+  id            String   @id @default(cuid())
+  organizerId   String   @unique
+  theme         Json
+  customCSS     String?
+  layout        String   @default("standard")
+  language      String   @default("en")
+  currency      String   @default("EGP")
+  settings      Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  organizer     User @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+
+  @@map("widget_configs")
+}
+
+model Webhook {
+  id            String   @id @default(cuid())
+  organizerId   String
+  url           String
+  events        String[]
+  secret        String
+  isActive      Boolean  @default(true)
+  retryConfig   Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  organizer     User @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  logs          WebhookLog[]
+
+  @@map("webhooks")
+}
+
+model WebhookLog {
+  id          String   @id @default(cuid())
+  webhookId   String
+  event       String
+  payload     Json
+  status      String
+  attempts    Int      @default(0)
+  response    Json?
+  deliveredAt DateTime?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  webhook     Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_logs")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   // "email", "sms", "push", "in_app"
+  status    String   @default("pending") // "pending", "sent", "failed", "read"
+  sentAt    DateTime?
+  readAt    DateTime?
+  metadata  Json?    // Additional data
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // "login", "create_event", "purchase_ticket", etc.
+  resource  String?  // "event", "ticket", "payment", etc.
+  resourceId String? // ID of the affected resource
+  metadata  Json?    // Additional data about the action
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("activity_logs")
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  type      String   @default("string") // "string", "number", "boolean", "json"
+  category  String   @default("general")
+  description String?
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model Organizer {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  name        String
+  description String?
+  website     String?
+  socialMedia Json?    // Social media links
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events      Event[] @relation("EventOrganizer")
+
+  @@map("organizers")
+}
+
+model VenueOwner {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  businessName String?
+  businessType String?
+  taxId       String?
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venues      Venue[]
+
+  @@map("venue_owners")
+}
+
+model TicketType {
+  id               String   @id @default(cuid())
+  eventId          String
+  name             String
+  description      String?
+  price            Float
+  currency         String   @default("EGP")
+  quantity         Int
+  availableQuantity Int     // Calculated field: quantity - sold
+  sold             Int      @default(0)
+  maxPerOrder      Int      @default(10)
+  isActive         Boolean  @default(true)
+  salesStart       DateTime?
+  salesEnd         DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  event            Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("ticket_types")
+}
+
+model OAuthClient {
+  id            String   @id @default(cuid())
+  clientId      String   @unique
+  clientSecret  String
+  name          String
+  description   String?
+  redirectUris  String[]
+  scopes        String[]
+  isActive      Boolean  @default(true)
+  organizerId   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  organizer     User @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  authCodes     AuthorizationCode[]
+  accessTokens  AccessToken[]
+
+  @@map("oauth_clients")
+}
+
+model AuthorizationCode {
+  id          String   @id @default(cuid())
+  clientId    String
+  userId      String
+  code        String   @unique
+  redirectUri String
+  scopes      String[]
+  expiresAt   DateTime
+  used        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  client      OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("authorization_codes")
+}
+
+model AccessToken {
+  id           String    @id @default(cuid())
+  clientId     String
+  userId       String
+  token        String    @unique
+  refreshToken String?   @unique
+  scopes       String[]
+  expiresAt    DateTime
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  client       OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("access_tokens")
+}
