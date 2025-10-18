@@ -23,6 +23,8 @@
     }
   ],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "REACT_APP_SENTRY_DSN": "https://8b8d198c43d88181fd78124f4a2f723a@o4510143363219456.ingest.de.sentry.io/4510143365906512",
+    "REACT_APP_ENV": "production"
   }
 }

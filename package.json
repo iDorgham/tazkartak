@@ -29,7 +29,8 @@
     "db:push": "cd apps/backend && npx prisma db push",
     "db:migrate": "cd apps/backend && npx prisma migrate dev",
     "db:seed": "cd apps/backend && npx prisma db seed",
-    "db:studio": "cd apps/backend && npx prisma studio"
+    "db:studio": "cd apps/backend && npx prisma studio",
+    "setup:sentry": "node scripts/setup-sentry-env.js"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

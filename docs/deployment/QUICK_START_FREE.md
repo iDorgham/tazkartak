@@ -32,7 +32,7 @@
    NODE_ENV=production
    JWT_SECRET=your-jwt-secret-here
    JWT_REFRESH_SECRET=your-refresh-secret-here
-   SENTRY_DSN=your-sentry-dsn-here
+   SENTRY_DSN=https://8b8d198c43d88181fd78124f4a2f723a@o4510143363219456.ingest.de.sentry.io/4510143365906512
    PAYMOB_API_KEY=your-paymob-key
    FAWRY_MERCHANT_CODE=your-fawry-code
    SMTP_HOST=smtp.gmail.com
@@ -53,6 +53,8 @@
      ```env
      REACT_APP_API_URL=https://your-app.up.railway.app
      REACT_APP_WIDGET_URL=https://your-widget.vercel.app
+     REACT_APP_SENTRY_DSN=https://8b8d198c43d88181fd78124f4a2f723a@o4510143363219456.ingest.de.sentry.io/4510143365906512
+     REACT_APP_ENV=production
      ```
 
 2. **Widget Project**

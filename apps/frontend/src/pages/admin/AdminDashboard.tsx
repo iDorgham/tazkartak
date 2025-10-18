@@ -28,6 +28,7 @@ import { useNavigate } from 'react-router-dom';
 import RoleGuard from '../../components/common/RoleGuard';
 import { Resource, Permission } from '../../utils/rbac.util';
 import { UserRole } from '../../types/auth.types';
+import SentryTestButton from '../../components/common/SentryTestButton';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -219,6 +220,9 @@ const AdminDashboard: React.FC = () => {
             </Paper>
           </Grid>
         </Grid>
+
+        {/* Sentry Test Button - Development Only */}
+        <SentryTestButton />
       </Box>
     </RoleGuard>
   );

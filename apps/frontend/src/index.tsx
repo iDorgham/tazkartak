@@ -10,7 +10,12 @@ import { Toaster } from 'react-hot-toast';
 import App from './App';
 import { store } from './store';
 import { theme } from './utils/theme';
+import { initSentry } from './config/sentry.config';
+import SentryErrorBoundary from './components/common/SentryErrorBoundary';
 import './index.css';
+
+// Initialize Sentry as early as possible
+initSentry();
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -18,39 +23,41 @@ const root = ReactDOM.createRoot(
 
 root.render(
   <React.StrictMode>
-    <HelmetProvider>
-      <Provider store={store}>
-        <BrowserRouter>
-          <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <App />
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-                success: {
-                  duration: 3000,
-                  iconTheme: {
-                    primary: '#4caf50',
-                    secondary: '#fff',
+    <SentryErrorBoundary>
+      <HelmetProvider>
+        <Provider store={store}>
+          <BrowserRouter>
+            <ThemeProvider theme={theme}>
+              <CssBaseline />
+              <App />
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: '#363636',
+                    color: '#fff',
                   },
-                },
-                error: {
-                  duration: 5000,
-                  iconTheme: {
-                    primary: '#f44336',
-                    secondary: '#fff',
+                  success: {
+                    duration: 3000,
+                    iconTheme: {
+                      primary: '#4caf50',
+                      secondary: '#fff',
+                    },
                   },
-                },
-              }}
-            />
-          </ThemeProvider>
-        </BrowserRouter>
-      </Provider>
-    </HelmetProvider>
+                  error: {
+                    duration: 5000,
+                    iconTheme: {
+                      primary: '#f44336',
+                      secondary: '#fff',
+                    },
+                  },
+                }}
+              />
+            </ThemeProvider>
+          </BrowserRouter>
+        </Provider>
+      </HelmetProvider>
+    </SentryErrorBoundary>
   </React.StrictMode>
 );
